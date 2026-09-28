@@ -152,7 +152,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <label class="chk"><input type="checkbox" id="f-dead" checked>隐藏持有人 &lt;5（新币 30 分钟内照常显示）</label>
       <label class="chk"><input type="checkbox" id="f-sound">新币提示音</label>
     </div>
-    <div class="hint">每 15 秒检查新币；评分以过去 24 小时上线、持有人 ≥10 的新币为基准（今天 <b id="s-live">–</b> 个）。数据来自 nearly.trade 与 NEAR 链上，仅供参考。</div>
+    <div class="hint">每 15 秒检查一次新币；评分以过去 24 小时上线、持有人 ≥10 的新币为基准（今天 <b id="s-live">–</b> 个）。数据来自 nearly.trade 与 NEAR 链上，仅供参考。</div>
   </header>
   <main class="feed" id="feed"><div class="empty">正在读取 nearly.trade 的发射记录…</div></main>
   <div class="more"><button id="more" hidden>再显示 20 个</button></div>
@@ -169,7 +169,7 @@ const SNIPERS=new Set(['34763166289a4c226ae4cff044053429829522e2ece98b70ae3c7425
 const QUOTES={'wrap.near':'NEAR','nearly-993927.nearlytrade.near':'NEARLY','token.rhea.near':'RHEA','zec.omft.near':'ZEC'};
 
 const S={all:[],byId:new Map(),byCreator:new Map(),sym:new Map(),detail:new Map(),seen:new Set(),fresh:new Set(),
-  sort:'new',hi:false,dead:true,sound:false,show:20,cohort:null,nearUsd:0,firstLoad:true};
+  sort:'new',hi:false,dead:true,sound:false,show:20,cohort:null,nearUsd:0,firstLoad:true,full:false,bootAt:Date.now()};
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -183,7 +183,7 @@ function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clear
 try{const p=JSON.parse(localStorage.getItem('nr-prefs')||'{}');Object.assign(S,{sort:p.sort||'new',hi:!!p.hi,dead:p.dead!==false})}catch(e){}
 function savePrefs(){try{localStorage.setItem('nr-prefs',JSON.stringify({sort:S.sort,hi:S.hi,dead:S.dead}))}catch(e){}}
 
-async function j(url,opt){const r=await fetch(url,opt);if(!r.ok)throw new Error(r.status);return r.json()}
+async function j(url,opt={}){const c=new AbortController();const tm=setTimeout(()=>c.abort(),15e3);try{const r=await fetch(url,{...opt,signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(tm)}}
 async function rpc(method,params){
   let last;for(const u of RPCS){try{const d=await j(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(d.error)throw new Error(JSON.stringify(d.error).slice(0,80));return d.result}catch(e){last=e}}throw last}
 async function view(contract,method,args={}){
@@ -192,13 +192,15 @@ async function view(contract,method,args={}){
 
 // ---------- 数据 ----------
 async function loadAll(){
-  const out=[];for(let off=0;off<5000;off+=200){const page=await j(`${API}/launches?sort=new&limit=200&offset=${off}`);out.push(...page);if(page.length<200)break}
-  ingest(out,true)}
+  const total=(await j(`${API}/stats`).catch(()=>({launches:2000}))).launches||2000;
+  const offs=[];for(let off=0;off<total+200;off+=200)offs.push(off);
+  const pages=await Promise.all(offs.map(off=>j(`${API}/launches?sort=new&limit=200&offset=${off}`).catch(()=>[])));
+  ingest(pages.flat(),true);S.full=true}
 async function loadNew(){const page=await j(`${API}/launches?sort=new&limit=60&offset=0`);ingest(page,false)}
 function ingest(list,full){
   let added=[];
   for(const x of list){
-    if(!S.byId.has(x.id)){if(!S.firstLoad&&S.seen.size)added.push(x)}
+    if(!S.byId.has(x.id)){if(!S.firstLoad&&x.created_at_ms>S.bootAt)added.push(x)}
     S.byId.set(x.id,x);S.seen.add(x.id)}
   S.all=[...S.byId.values()].sort((a,b)=>b.created_at_ms-a.created_at_ms);
   S.byCreator=new Map();S.sym=new Map();
@@ -342,7 +344,7 @@ function card({x,a}){
   </div></div>
   ${a.tax?`<div class="box"><h3>税收与兑现</h3><p>买卖各收 ${a.buyB/100}% / ${a.sellB/100}%；平台先拿 ${(a.tax.platform_bps||0)/100}%，其余按 创作者 ${(a.tax.creator_bps||0)/100}% · 持币人 ${(a.tax.holders_bps||0)/100}% · 销毁 ${(a.tax.burn_bps||0)/100}% 分。${paid}</p></div>`:''}
   <div class="flags">${d.at?'':'<span class="loading">正在读取链上持仓、税率和 Dev 余额…</span>'}${a.flags.map(f=>`<div class="flag ${f[0]}"><b>${esc(f[1])}</b><span>${esc(f[2])}</span></div>`).join('')}</div>
-  <div class="facts"><span>Dev 持仓 <b>${a.devPct==null?'…':a.devPct.toFixed(2)+'%'}</b></span><span>前十大 <b>${a.top10==null?'…':a.top10.toFixed(1)+'%'}</b></span><span>Dev 此前发币 <b>${a.devPrior} 次</b></span></div>
+  <div class="facts"><span>Dev 持仓 <b>${a.devPct==null?'…':a.devPct.toFixed(2)+'%'}</b></span><span>前十大 <b>${a.top10==null?'…':a.top10.toFixed(1)+'%'}</b></span><span>Dev 此前发币 <b>${S.full?a.devPrior+' 次':'统计中…'}</b></span></div>
   <details><summary>评分怎么算的</summary><div class="breakdown">${br}<span><b>最终</b></span><span></span><span><b>${a.score??'–'}</b></span></div></details>
   <div class="actions">
     <a class="btn buy" href="https://nearly.trade/${esc(x.token)}" target="_blank" rel="noopener">去 Nearly 购买 ↗</a>
@@ -384,12 +386,15 @@ $('feed').addEventListener('click',e=>{const b=e.target.closest('[data-copy]');i
 function syncCtl(){$('sort-new').setAttribute('aria-pressed',S.sort==='new');$('sort-score').setAttribute('aria-pressed',S.sort==='score');$('f-hi').checked=S.hi;$('f-dead').checked=S.dead}
 function setStatus(ok,t){$('dot').classList.toggle('err',!ok);$('status').textContent=t}
 
-async function tickNew(){try{await loadNew();setStatus(true,'自动更新 · '+hm(Date.now()).slice(6));render()}catch(e){setStatus(false,'连不上 nearly.trade，15 秒后重试')}}
 async function tickFull(){try{await loadAll();render()}catch(e){}}
 async function refreshVisibleDetail(){list().slice(0,S.show).forEach(o=>{const d=S.detail.get(o.x.id);if(d&&!d.loading)d.at=0});render()}
+let nextAt=Date.now()+15e3,lastOk=0;
+function stamp(){const s=Math.max(0,Math.round((nextAt-Date.now())/1e3));if(lastOk)setStatus(true,`已更新 ${hm(lastOk).slice(6)} · ${s} 秒后再查`)}
+async function tickNew(){try{await loadNew();lastOk=Date.now();render()}catch(e){setStatus(false,'连不上 nearly.trade（手机可能要开代理），15 秒后自动重试')}nextAt=Date.now()+15e3;stamp()}
 (async()=>{syncCtl();
-  try{await loadAll();setStatus(true,'自动更新 · '+hm(Date.now()).slice(6));render()}catch(e){setStatus(false,'读取失败，稍后自动重试')}
-  setInterval(tickNew,15e3);setInterval(tickFull,180e3);setInterval(refreshVisibleDetail,90e3)})();
+  try{await loadNew();lastOk=Date.now();stamp();render()}catch(e){setStatus(false,'连不上 nearly.trade（手机可能要开代理），15 秒后自动重试')}
+  loadAll().then(render).catch(()=>{});
+  setInterval(tickNew,15e3);setInterval(stamp,1e3);setInterval(tickFull,180e3);setInterval(refreshVisibleDetail,90e3)})();
 </script>
 </body>
 </html>
