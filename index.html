@@ -6,7 +6,7 @@
 <title>NEAR 新币雷达</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <style>
 :root{
   color-scheme: dark;
@@ -154,7 +154,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
     </div>
     <div class="hint">每 15 秒检查一次新币；评分以过去 24 小时上线、持有人 ≥10 的新币为基准（今天 <b id="s-live">–</b> 个）。数据来自 nearly.trade 与 NEAR 链上，仅供参考。</div>
   </header>
-  <main class="feed" id="feed"><div class="empty">正在读取 nearly.trade 的发射记录…</div></main>
+  <main class="feed" id="feed"><div class="empty" id="boot">正在读取 nearly.trade 的发射记录…<br><small id="boot-t"></small></div></main>
   <div class="more"><button id="more" hidden>再显示 20 个</button></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -392,6 +392,7 @@ let nextAt=Date.now()+15e3,lastOk=0;
 function stamp(){const s=Math.max(0,Math.round((nextAt-Date.now())/1e3));if(lastOk)setStatus(true,`已更新 ${hm(lastOk).slice(6)} · ${s} 秒后再查`)}
 async function tickNew(){try{await loadNew();lastOk=Date.now();render()}catch(e){setStatus(false,'连不上 nearly.trade（手机可能要开代理），15 秒后自动重试')}nextAt=Date.now()+15e3;stamp()}
 (async()=>{syncCtl();
+  const bt0=Date.now();const bti=setInterval(()=>{const e=$('boot-t');if(!e){clearInterval(bti);return}const s=Math.round((Date.now()-bt0)/1e3);e.textContent=s<8?`${s} 秒`:`已等 ${s} 秒，可能连不上 nearly.trade，手机请开代理再刷新`},1e3);
   try{await loadNew();lastOk=Date.now();stamp();render()}catch(e){setStatus(false,'连不上 nearly.trade（手机可能要开代理），15 秒后自动重试')}
   loadAll().then(render).catch(()=>{});
   setInterval(tickNew,15e3);setInterval(stamp,1e3);setInterval(tickFull,180e3);setInterval(refreshVisibleDetail,90e3)})();
