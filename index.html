@@ -149,7 +149,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <button id="sort-score" aria-pressed="false">评分最高</button>
       </div>
       <label class="chk"><input type="checkbox" id="f-hi">只看 ≥6 分</label>
-      <label class="chk"><input type="checkbox" id="f-dead" checked>隐藏持有人 &lt;5</label>
+      <label class="chk"><input type="checkbox" id="f-dead" checked>隐藏持有人 &lt;5（新币 30 分钟内照常显示）</label>
       <label class="chk"><input type="checkbox" id="f-sound">新币提示音</label>
     </div>
     <div class="hint">每 15 秒检查新币；评分以过去 24 小时上线、持有人 ≥10 的新币为基准（今天 <b id="s-live">–</b> 个）。数据来自 nearly.trade 与 NEAR 链上，仅供参考。</div>
@@ -300,7 +300,7 @@ function verdict(s){if(s==null)return['未开盘','var(--muted)'];if(s>=7.5)retu
 // ---------- 渲染 ----------
 function list(){
   let arr=S.all.filter(x=>x.step==='Done');
-  if(S.dead)arr=arr.filter(x=>(x.holders||0)>=5);
+  if(S.dead)arr=arr.filter(x=>(x.holders||0)>=5||Date.now()-x.created_at_ms<30*60e3||S.fresh.has(x.id));
   let withA=arr.map(x=>({x,a:analyze(x)}));
   if(S.hi)withA=withA.filter(o=>(o.a.score??0)>=6);
   if(S.sort==='score')withA.sort((p,q)=>(q.a.score??0)-(p.a.score??0)||q.x.created_at_ms-p.x.created_at_ms);
@@ -316,7 +316,7 @@ function card({x,a}){
     a.pen.map(p=>`<span>扣分：${p[0]}</span><span></span><span style="color:var(--bad)">−${p[1]}</span>`).join('');
   return `<article class="card${S.fresh.has(x.id)?' fresh':''}" data-id="${x.id}">
   <div class="head">
-    <img class="icon" src="${esc(x.icon||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <img class="icon" data-src="${esc(x.icon||'')}" ${ICONS.get(x.icon)?`src="${ICONS.get(x.icon)}"`:''} alt="">
     <div class="id">
       <div class="name"><h2>${esc(x.name)}</h2><span class="sym">$${esc(x.symbol)}</span>${S.fresh.has(x.id)?'<span class="pill new">刚上线</span>':''}<span class="pill q">配 ${esc(a.quote)}</span></div>
       <div class="meta"><button class="ca" data-copy="${esc(x.token)}" title="复制合约">合约 ${esc(x.token)} ⧉</button></div>
@@ -356,9 +356,13 @@ function render(){
   const all=list();const vis=all.slice(0,S.show);
   $('s-hi').textContent=all.filter(o=>(o.a.score??0)>=7).length;
   $('feed').innerHTML=vis.length?vis.map(card).join(''):'<div class="empty">当前筛选下没有币。</div>';
+  document.querySelectorAll('img.icon[data-src]:not([src])').forEach(loadIcon);
   open.forEach(id=>{const d=document.querySelector(`.card[data-id="${id}"] details`);if(d)d.open=true});
   $('more').hidden=all.length<=S.show;
   vis.forEach(o=>{const d=S.detail.get(o.x.id);if(!d||(!d.loading&&Date.now()-(d.at||0)>90e3))queue(o.x)})}
+const ICONS=new Map(),ICON_PENDING=new Set();
+function loadIcon(img){const u=img.dataset.src;if(!u)return;if(ICONS.get(u)){img.src=ICONS.get(u);return}if(ICON_PENDING.has(u))return;ICON_PENDING.add(u);
+  fetch(u).then(r=>r.ok?r.blob():Promise.reject()).then(b=>{const o=URL.createObjectURL(b);ICONS.set(u,o);document.querySelectorAll(`img.icon[data-src="${CSS.escape(u)}"]`).forEach(i=>i.src=o)}).catch(()=>{}).finally(()=>ICON_PENDING.delete(u))}
 const Q=[];let running=0;
 function queue(x){if(Q.includes(x)||S.detail.get(x.id)?.loading)return;Q.push(x);pump()}
 function pump(){while(running<3&&Q.length){const x=Q.shift();running++;loadDetail(x).finally(()=>{running--;pump()})}}
