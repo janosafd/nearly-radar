@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NEAR 新币雷达</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --ground:#0b1115; --surface:#111a1f; --raised:#172228; --line:#233238; --line-2:#2e4148;
+  --text:#e3ebed; --muted:#86a0a7; --faint:#5d767d;
+  --accent:#6fd3c1; --accent-ink:#06201b;
+  --good:#74cf8a; --warn:#e8b04e; --bad:#ef6b5e; --info:#7aa8e8;
+  --good-bg:rgba(116,207,138,.10); --warn-bg:rgba(232,176,78,.10); --bad-bg:rgba(239,107,94,.11); --info-bg:rgba(122,168,232,.10);
+  --new:#c792ea;
+  --f-display:"Chakra Petch","Noto Sans SC",system-ui,sans-serif;
+  --f-body:"Noto Sans SC",system-ui,-apple-system,"PingFang SC",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme: light;
+    --ground:#eef3f3; --surface:#ffffff; --raised:#f4f8f8; --line:#d7e2e3; --line-2:#c3d2d4;
+    --text:#132026; --muted:#557077; --faint:#89a0a5;
+    --accent:#0f8f7c; --accent-ink:#ffffff;
+    --good:#1f8a45; --warn:#a86a00; --bad:#c53a2c; --info:#2f63b5;
+    --good-bg:rgba(31,138,69,.08); --warn-bg:rgba(168,106,0,.09); --bad-bg:rgba(197,58,44,.08); --info-bg:rgba(47,99,181,.08);
+    --new:#8a4fc0;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--text)}
+body{font:14px/1.6 var(--f-body);padding-inline:16px;padding-block:0 48px}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ground);padding-block:14px 12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.bar-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font:700 22px/1 var(--f-display);letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+.scope{width:26px;height:26px;border-radius:50%;border:2px solid var(--accent);position:relative;overflow:hidden;flex:none}
+.scope::after{content:"";position:absolute;inset:0;background:conic-gradient(from 0deg,transparent 0 300deg,var(--accent) 360deg);animation:sweep 2.6s linear infinite;opacity:.8}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.live{display:flex;align-items:center;gap:7px;color:var(--muted);font:12px var(--f-mono)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 var(--good);animation:ping 2s infinite}
+.dot.err{background:var(--bad);animation:none}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(116,207,138,.5)}100%{box-shadow:0 0 0 8px rgba(116,207,138,0)}}
+.stats{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+.stat{font:12px var(--f-mono);color:var(--muted)} .stat b{color:var(--text);font-weight:600}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.seg{display:flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}
+.seg button{background:none;border:0;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.chk{display:flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
+.chk input{accent-color:var(--accent)}
+.hint{color:var(--faint);font-size:12px;margin-top:8px}
+
+/* cards */
+.feed{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.card.fresh{border-color:var(--new);box-shadow:0 0 0 1px var(--new) inset}
+.head{display:flex;gap:14px;align-items:flex-start}
+.icon{width:54px;height:54px;border-radius:12px;object-fit:cover;background:var(--raised);flex:none;border:1px solid var(--line)}
+.id{min-width:0;flex:1;display:flex;flex-direction:column;gap:5px}
+.name{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.name h2{margin:0;font:700 22px/1.15 var(--f-display);letter-spacing:.01em;word-break:break-word}
+.sym{font:500 13px var(--f-mono);color:var(--muted)}
+.pill{font-size:11px;padding:2px 7px;border-radius:5px;font-weight:600;white-space:nowrap}
+.pill.new{background:var(--new);color:#140a1c}
+.pill.q{border:1px solid var(--line-2);color:var(--muted);font-weight:500}
+.meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px}
+.ca{font:12px var(--f-mono);border:1px solid var(--line-2);border-radius:6px;padding:2px 8px;cursor:pointer;background:none;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ca:hover{border-color:var(--accent)}
+.devid{font:12px var(--f-mono);color:var(--muted);overflow-wrap:anywhere}
+.score{flex:none;width:74px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.ring{--p:0;--c:var(--muted);width:62px;height:62px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center}
+.ring span{width:50px;height:50px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:700 20px var(--f-display);color:var(--c)}
+.verdict{font-size:11px;color:var(--muted);white-space:nowrap}
+
+.what h3,.box h3{margin:0 0 4px;font:600 12px var(--f-body);color:var(--muted);letter-spacing:.04em}
+.what p{margin:0;font-size:15px;line-height:1.7;max-width:78ch}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:12px;border:1px solid var(--line-2);border-radius:6px;padding:1px 8px;color:var(--muted)}
+.desc{margin-top:6px;color:var(--faint);font-size:12px;white-space:pre-wrap;max-height:4.8em;overflow:hidden}
+
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.grid+.grid{border-top:0}
+.cell{padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell+.cell{border-left:1px solid var(--line)}
+.cell .k{font-size:12px;color:var(--muted)}
+.cell .v{font:600 18px var(--f-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font-size:11px;font-weight:400;color:var(--muted);margin-left:3px}
+.v.warn{color:var(--warn)} .v.bad{color:var(--bad)} .v.good{color:var(--good)} .v.dim{color:var(--faint)}
+
+.box{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--raised)}
+.box p{margin:0;font-size:13px}
+.flags{display:flex;flex-direction:column;gap:6px}
+.flag{display:flex;gap:10px;align-items:baseline;padding:8px 12px;border-radius:8px;font-size:13px;border-left:3px solid}
+.flag b{white-space:nowrap}
+.flag.bad{background:var(--bad-bg);border-color:var(--bad)} .flag.bad b{color:var(--bad)}
+.flag.warn{background:var(--warn-bg);border-color:var(--warn)} .flag.warn b{color:var(--warn)}
+.flag.good{background:var(--good-bg);border-color:var(--good)} .flag.good b{color:var(--good)}
+.flag.info{background:var(--info-bg);border-color:var(--info)} .flag.info b{color:var(--info)}
+.facts{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)} .facts b{color:var(--text);font-family:var(--f-mono)}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.breakdown{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;font-size:12px;margin-top:8px;align-items:center}
+.bb{height:6px;background:var(--line);border-radius:3px;overflow:hidden}.bb i{display:block;height:100%;background:var(--accent)}
+.actions{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px}
+.btn{display:flex;justify-content:center;align-items:center;gap:6px;padding:10px;border-radius:9px;border:1px solid var(--line-2);text-decoration:none;font-weight:600;font-size:14px;background:var(--raised)}
+.btn.buy{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.off{opacity:.35;pointer-events:none}
+.loading{color:var(--faint);font-size:12px}
+.more{display:flex;justify-content:center;margin-top:10px}
+.more button{border:1px solid var(--line-2);background:var(--surface);padding:9px 18px;border-radius:9px;cursor:pointer}
+.empty{color:var(--muted);text-align:center;padding:40px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--ground);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:720px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cell:nth-child(3){border-left:0}
+  .cell:nth-child(n+3){border-top:1px solid var(--line)}
+  .actions{grid-template-columns:1fr 1fr}
+  .actions .buy{grid-column:1/-1}
+  .stats{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){.scope::after,.dot{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="bar-top">
+      <div class="brand"><span class="scope" aria-hidden="true"></span>NEAR 新币雷达</div>
+      <div class="live"><span class="dot" id="dot"></span><span id="status">连接中…</span></div>
+      <div class="stats">
+        <span class="stat">全部发射 <b id="s-total">–</b></span>
+        <span class="stat">24 小时新币 <b id="s-day">–</b></span>
+        <span class="stat">≥7 分 <b id="s-hi">–</b></span>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="排序">
+        <button id="sort-new" aria-pressed="true">最新在前</button>
+        <button id="sort-score" aria-pressed="false">评分最高</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="f-hi">只看 ≥6 分</label>
+      <label class="chk"><input type="checkbox" id="f-dead" checked>隐藏持有人 &lt;5</label>
+      <label class="chk"><input type="checkbox" id="f-sound">新币提示音</label>
+    </div>
+    <div class="hint">每 15 秒检查新币；评分以过去 24 小时上线、持有人 ≥10 的新币为基准（今天 <b id="s-live">–</b> 个）。数据来自 nearly.trade 与 NEAR 链上，仅供参考。</div>
+  </header>
+  <main class="feed" id="feed"><div class="empty">正在读取 nearly.trade 的发射记录…</div></main>
+  <div class="more"><button id="more" hidden>再显示 20 个</button></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API='https://nearly.trade/api';
+const RPCS=['https://rpc.mainnet.near.org','https://free.rpc.fastnear.com'];
+const POOLS=/ref-labs\.near|ref-finance\.near|^lock\.nearlytrade\.near$|^nearlytrade\.near$/;
+// 已查实的操盘集群（资金同源）与见币就抢的狙击机器人
+const CLUSTER=new Set(['strongzebra1197.near','swiftharbor4181.near','heavyzone1407.near','silentzone66.near','stilloil1394.near','rudequiche1349.near','singlecap963.near']);
+const SNIPERS=new Set(['34763166289a4c226ae4cff044053429829522e2ece98b70ae3c74251dbe550b']);
+const QUOTES={'wrap.near':'NEAR','nearly-993927.nearlytrade.near':'NEARLY','token.rhea.near':'RHEA','zec.omft.near':'ZEC'};
+
+const S={all:[],byId:new Map(),byCreator:new Map(),sym:new Map(),detail:new Map(),seen:new Set(),fresh:new Set(),
+  sort:'new',hi:false,dead:true,sound:false,show:20,cohort:null,nearUsd:0,firstLoad:true};
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short=a=>a&&a.length>26?a.slice(0,8)+'…'+a.slice(-6):a;
+const fmtUsd=v=>v==null?'–':v>=1e6?'$'+(v/1e6).toFixed(2)+'M':v>=1e3?'$'+(v/1e3).toFixed(1)+'K':'$'+v.toFixed(0);
+const fmtN=(v,d=1)=>v==null?'–':v>=1e6?(v/1e6).toFixed(d)+'M':v>=1e3?(v/1e3).toFixed(d)+'K':(+v).toFixed(v<10?2:d);
+const yocto=s=>s?Number(BigInt(String(s).split('.')[0]))/1e24:0;
+const ago=ms=>{const m=Math.round((Date.now()-ms)/60000);return m<1?'刚刚':m<60?m+' 分钟前':m<1440?(m/60).toFixed(1)+' 小时前':(m/1440).toFixed(1)+' 天前'};
+const hm=ms=>{const d=new Date(ms),p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1600)}
+try{const p=JSON.parse(localStorage.getItem('nr-prefs')||'{}');Object.assign(S,{sort:p.sort||'new',hi:!!p.hi,dead:p.dead!==false})}catch(e){}
+function savePrefs(){try{localStorage.setItem('nr-prefs',JSON.stringify({sort:S.sort,hi:S.hi,dead:S.dead}))}catch(e){}}
+
+async function j(url,opt){const r=await fetch(url,opt);if(!r.ok)throw new Error(r.status);return r.json()}
+async function rpc(method,params){
+  let last;for(const u of RPCS){try{const d=await j(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(d.error)throw new Error(JSON.stringify(d.error).slice(0,80));return d.result}catch(e){last=e}}throw last}
+async function view(contract,method,args={}){
+  const r=await rpc('query',{request_type:'call_function',finality:'final',account_id:contract,method_name:method,args_base64:btoa(JSON.stringify(args))});
+  if(r.error)throw new Error(r.error);return JSON.parse(new TextDecoder().decode(new Uint8Array(r.result)))}
+
+// ---------- 数据 ----------
+async function loadAll(){
+  const out=[];for(let off=0;off<5000;off+=200){const page=await j(`${API}/launches?sort=new&limit=200&offset=${off}`);out.push(...page);if(page.length<200)break}
+  ingest(out,true)}
+async function loadNew(){const page=await j(`${API}/launches?sort=new&limit=60&offset=0`);ingest(page,false)}
+function ingest(list,full){
+  let added=[];
+  for(const x of list){
+    if(!S.byId.has(x.id)){if(!S.firstLoad&&S.seen.size)added.push(x)}
+    S.byId.set(x.id,x);S.seen.add(x.id)}
+  S.all=[...S.byId.values()].sort((a,b)=>b.created_at_ms-a.created_at_ms);
+  S.byCreator=new Map();S.sym=new Map();
+  for(const x of S.all){(S.byCreator.get(x.creator)||S.byCreator.set(x.creator,[]).get(x.creator)).push(x);
+    const k=(x.symbol||'').toUpperCase();(S.sym.get(k)||S.sym.set(k,[]).get(k)).push(x)}
+  if(S.all[0]?.near_usd)S.nearUsd=S.all[0].near_usd;
+  buildCohort();
+  if(added.length){added.forEach(x=>S.fresh.add(x.id));notifyNew(added)}
+  S.firstLoad=false}
+function buildCohort(){
+  const day=S.all.filter(x=>Date.now()-x.created_at_ms<864e5&&x.step==='Done');
+  const live=day.filter(x=>(x.holders||0)>=10);
+  const col=f=>day.map(f).filter(v=>v!=null&&isFinite(v)).sort((a,b)=>a-b);
+  const colL=f=>live.map(f).filter(v=>v!=null&&isFinite(v)).sort((a,b)=>a-b);
+  S.cohort={n:day.length,live:live.length,holders:colL(x=>x.holders||0),trades:colL(x=>x.trades_24h||0),vol:colL(x=>x.volume_24h_near||0),fdv:colL(x=>x.fdv_usd||0)};
+  $('s-total').textContent=S.all.length;$('s-day').textContent=day.length;$('s-live').textContent=live.length}
+const pct=(arr,v)=>{if(!arr||!arr.length)return .5;let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi)>>1;if(arr[m]<=v)lo=m+1;else hi=m}return lo/arr.length};
+
+async function loadDetail(x){
+  const d=S.detail.get(x.id)||{};S.detail.set(x.id,d);if(d.loading)return;d.loading=true;
+  const jobs=[];
+  jobs.push(j(`${API}/holders/${x.token}?limit=25`).then(h=>{d.holders=Array.isArray(h)?h:(h.holders||[])}).catch(()=>{d.holdersErr=1}));
+  jobs.push(view('nearlytrade.near','get_tax',{launch_id:String(x.id)}).then(t=>{d.tax=t}).catch(()=>{d.taxErr=1}));
+  jobs.push(rpc('query',{request_type:'view_account',finality:'final',account_id:x.creator}).then(a=>{d.devBal=yocto(a.amount)}).catch(()=>{d.devErr=1}));
+  await Promise.all(jobs);d.loading=false;d.at=Date.now();render()}
+
+// ---------- 分析 ----------
+const KW=[
+  [/index|指数|top\s*10|basket|etf/i,'指数/组合','把一篮子币或资产打包，靠交易税买入后分给持币人'],
+  [/screener|scanner|radar|terminal|analy|tool|bot|dashboard|tracker|wallet/i,'工具类','声称要做交易/分析工具，价值取决于产品是否真的上线'],
+  [/stock|nvda|tsla|spy|equit/i,'股票概念','跟代币化美股挂钩的玩法'],
+  [/\bai\b|agent|gpt|llm|singularity|shoggoth|claw/i,'AI 概念','蹭 AI / NEAR AI 叙事'],
+  [/launch|pad|factory/i,'发射台概念','自称发射台或平台类项目'],
+  [/cat|kat|dog|inu|frog|pepe|yeti|wolf|dragon|bear|bull|shib|doge|neko|monkey|ape/i,'动物 Meme','纯 meme，靠社区和情绪'],
+  [/near(ly)?|illia|alex|legion|mascot|keypom|aurora/i,'NEAR 生态梗','玩 NEAR 圈内人物/吉祥物/文化梗'],
+];
+function classify(x){const t=`${x.name} ${x.symbol} ${x.description||''}`;const hits=KW.filter(k=>k[0].test(t));return hits.length?hits:[[null,'纯 Meme','没写具体用途，按纯 meme 看待']]}
+function analyze(x){
+  const d=S.detail.get(x.id)||{};const tax=d.tax;const c=S.cohort;
+  const hits=classify(x);const quote=QUOTES[x.quote]||(x.quote||'').split('.')[0].replace(/^bnb-0x.*/,'股票代币');
+  const devList=(S.byCreator.get(x.creator)||[]);const devPrior=devList.filter(y=>y.created_at_ms<x.created_at_ms).length;
+  const devBuy=yocto(x.dev_buy_near);const links=x.links||{};const nLinks=['website','twitter','telegram'].filter(k=>links[k]).length;
+  // 持仓
+  let devPct=null,top10=null,clusterHit=[],sniperHit=false,bundle=0;
+  if(d.holders){const rows=d.holders.map(r=>({a:r.account,p:Number(BigInt(String(r.balance).split('.')[0])/10n**18n)/((x.supply||1e9))*100})).filter(r=>!POOLS.test(r.a));
+    devPct=(rows.find(r=>r.a===x.creator)||{p:0}).p;top10=rows.slice(0,10).reduce((s,r)=>s+r.p,0);
+    clusterHit=rows.filter(r=>CLUSTER.has(r.a)).map(r=>r.a);sniperHit=rows.some(r=>SNIPERS.has(r.a));
+    bundle=rows.slice(0,15).filter(r=>/^[0-9a-f]{64}$/.test(r.a)&&r.a!==x.creator&&r.p>=1.5&&r.p<=5).length}
+  const sameSym=(S.sym.get((x.symbol||'').toUpperCase())||[]).filter(y=>y.id!==x.id);
+  const olderSame=sameSym.filter(y=>y.created_at_ms<x.created_at_ms);
+  const biggerSame=sameSym.filter(y=>(y.ath_fdv_usd||0)>(x.ath_fdv_usd||0)*2);
+  const draw=x.ath_fdv_usd?x.fdv_usd/x.ath_fdv_usd:1;
+  const liqUsd=(x.liquidity_near||0)*(x.near_usd||S.nearUsd);
+  // ---- 评分 ----
+  const parts=[];
+  const P=(k,label,v,w)=>parts.push({k,label,v:Math.max(0,Math.min(1,v)),w});
+  P('h','持有人（对比今日新币）',pct(c.holders,x.holders||0),2.6);
+  P('t','24h 交易笔数',pct(c.trades,x.trades_24h||0),2.0);
+  P('v','24h 成交额',pct(c.vol,x.volume_24h_near||0),1.4);
+  P('m','离最高点',draw>=.85?1:draw>=.6?.7:draw>=.4?.4:.15,1.2);
+  P('l','资料完整度',(nLinks/3)*.7+((x.description||'').length>40?.3:0),1.0);
+  const wsum=parts.reduce((s,p)=>s+p.w,0);let base=parts.reduce((s,p)=>s+p.v*p.w,0)/wsum*10;
+  const pen=[];const flags=[];
+  const buyB=tax?.buy_bps??null,sellB=tax?.sell_bps??null;
+  if(buyB!=null&&(buyB>300||sellB>300)){pen.push(['税率偏高',1]);flags.push(['warn','交易税',`买入 ${buyB/100}% · 卖出 ${sellB/100}%，来回至少亏 ${(buyB+sellB)/100}%`])}
+  else if(buyB!=null)flags.push(['info','交易税',`买入 ${buyB/100}% · 卖出 ${sellB/100}%`]);
+  if(devPrior>=10){pen.push(['连环发币',2]);flags.push(['bad','开发者历史',`该账户在 Nearly 已发 ${devList.length} 个币，其中 ${devPrior} 个早于本币`])}
+  else if(devPrior>=3){pen.push(['多次发币',.8]);flags.push(['warn','开发者历史',`该账户在 Nearly 已发 ${devList.length} 个币`])}
+  else flags.push(['good','开发者历史',devPrior?`之前只发过 ${devPrior} 个币`:'首次在 Nearly 发币']);
+  if(x.creator==='launchbot.nearlytrade.near'){pen.push(['机器人代发',.8]);flags.push(['warn','发币方式','由 launchbot 代发，真实操盘人看不到'])}
+  if(clusterHit.length){pen.push(['操盘集群',3]);flags.push(['bad','操盘集群',`前排有已查实的同源资金钱包：${clusterHit.join('、')}`])}
+  if(CLUSTER.has(x.creator)){pen.push(['集群开发者',3]);flags.push(['bad','开发者','开发者属于已查实的连环操盘集群'])}
+  if(sniperHit){pen.push(['狙击机器人',1]);flags.push(['warn','狙击机器人','前排有见币就抢的机器人钱包，涨了会先砸'])}
+  if(devPct!=null&&devPct>8){pen.push(['开发者持仓高',1.5]);flags.push(['bad','开发者持仓',`开发者还拿着 ${devPct.toFixed(2)}%`])}
+  if(devPct!=null&&devBuy>0&&devPct<.05){pen.push(['开发者已出',.5]);flags.push(['warn','开发者已出',`创建时自购 ${devBuy.toFixed(1)} NEAR，现在前排已看不到开发者`])}
+  if(bundle>=4){pen.push(['疑似捆绑',1.5]);flags.push(['warn','疑似捆绑',`前排有 ${bundle} 个匿名地址整齐地各拿 1.5%–5%，像开盘时同一人分钱包买入`])}
+  if(top10!=null&&top10>45){pen.push(['筹码集中',1.5]);flags.push(['bad','筹码集中',`前十大（不含池子）合计 ${top10.toFixed(1)}%`])}
+  if(biggerSame.length){pen.push(['疑似仿盘',1.2]);flags.push(['warn','同名币',`同名 ${x.symbol} 还有 ${sameSym.length} 个，其中有更大的（最高 ${fmtUsd(Math.max(...biggerSame.map(y=>y.ath_fdv_usd||0)))}），小心买错`])}
+  else if(olderSame.length)flags.push(['info','同名币',`同名 ${x.symbol} 之前出过 ${olderSame.length} 个`]);
+  if(draw<.4)flags.push(['warn','回撤',`现在只有最高点的 ${(draw*100).toFixed(0)}%`]);
+  if(liqUsd&&liqUsd<3000)flags.push(['warn','池子很浅',`池子约 ${fmtUsd(liqUsd)}，买几十美元就会明显推价`]);
+  const penSum=pen.reduce((s,p)=>s+p[1],0);
+  let score=Math.max(1,Math.min(10,base-penSum));score=Math.round(score*2)/2;
+  if(x.step!=='Done')score=null;
+  // ---- 用途说明 ----
+  const cat=hits.map(h=>h[1]);const why=hits[0][2];
+  let s=`${x.name}（$${x.symbol}）是在 Nearly 发射、跟 ${quote} 配对的代币，归类为「${cat.join(' / ')}」：${why}。`;
+  if(tax){const hb=tax.holders_bps||0,bb=tax.burn_bps||0,cb=tax.creator_bps||0;
+    const dest=[cb?`创作者 ${cb/100}%`:'',hb?`持币人分红 ${hb/100}%`:'',bb?`销毁 ${bb/100}%`:''].filter(Boolean).join('、');
+    if(dest)s+=`交易税扣掉平台 ${(tax.platform_bps||0)/100}% 后，${dest}。`;
+    if(hb>0)s+='有持币分红机制。'; if(bb>0)s+='带通缩销毁。'}
+  s+=`现在持有人 ${x.holders} 个，24 小时 ${x.trades_24h||0} 笔交易，创建时自购 ${devBuy?devBuy.toFixed(1):0} NEAR。`;
+  if(!nLinks)s+='没填官网、推特和 TG。';
+  const tags=[...cat,quote!=='NEAR'?`${quote} 配对`:null,tax?.holders_bps?'持币分红':null,tax?.burn_bps?'销毁':null].filter(Boolean);
+  return {score,base,parts,pen,flags,summary:s,tags,devPrior,devTotal:devList.length,devBuy,devPct,top10,liqUsd,buyB,sellB,tax,quote,draw}}
+
+function verdict(s){if(s==null)return['未开盘','var(--muted)'];if(s>=7.5)return['值得重点看','var(--good)'];if(s>=6)return['可以观察','var(--accent)'];if(s>=4)return['一般','var(--warn)'];return['高风险','var(--bad)']}
+
+// ---------- 渲染 ----------
+function list(){
+  let arr=S.all.filter(x=>x.step==='Done');
+  if(S.dead)arr=arr.filter(x=>(x.holders||0)>=5);
+  let withA=arr.map(x=>({x,a:analyze(x)}));
+  if(S.hi)withA=withA.filter(o=>(o.a.score??0)>=6);
+  if(S.sort==='score')withA.sort((p,q)=>(q.a.score??0)-(p.a.score??0)||q.x.created_at_ms-p.x.created_at_ms);
+  return withA}
+function card({x,a}){
+  const d=S.detail.get(x.id)||{};const [vt,vc]=verdict(a.score);const lk=x.links||{};
+  const tweet=lk.twitter;const devBal=d.devBal;
+  const cls=v=>v==null?'dim':'';
+  const taxTxt=a.buyB==null?(d.taxErr?'读取失败':'…'):`${a.buyB/100}% / ${a.sellB/100}%`;
+  const taxCls=a.buyB==null?'dim':(a.buyB>300||a.sellB>300)?'bad':(a.buyB>=200||a.sellB>=200)?'warn':'good';
+  const paid=a.tax?`已付创作者 ${fmtN(yocto(a.tax.paid_creator),2)} · 已分给持币人 ${fmtN(yocto(a.tax.paid_holders),2)}（单位随交易对）`:'';
+  const br=a.parts.map(p=>`<span>${p.label}</span><span class="bb"><i style="width:${(p.v*100).toFixed(0)}%"></i></span><span>${(p.v*10).toFixed(1)}</span>`).join('')+
+    a.pen.map(p=>`<span>扣分：${p[0]}</span><span></span><span style="color:var(--bad)">−${p[1]}</span>`).join('');
+  return `<article class="card${S.fresh.has(x.id)?' fresh':''}" data-id="${x.id}">
+  <div class="head">
+    <img class="icon" src="${esc(x.icon||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <div class="id">
+      <div class="name"><h2>${esc(x.name)}</h2><span class="sym">$${esc(x.symbol)}</span>${S.fresh.has(x.id)?'<span class="pill new">刚上线</span>':''}<span class="pill q">配 ${esc(a.quote)}</span></div>
+      <div class="meta"><button class="ca" data-copy="${esc(x.token)}" title="复制合约">合约 ${esc(x.token)} ⧉</button></div>
+      <div class="meta"><span>创建于 ${hm(x.created_at_ms)}（${ago(x.created_at_ms)}）</span><span class="devid">Dev ${esc(x.creator)}</span></div>
+    </div>
+    <div class="score"><div class="ring" style="--p:${(a.score??0)*10};--c:${vc}"><span>${a.score??'–'}</span></div><span class="verdict">${vt}</span></div>
+  </div>
+  <div class="what"><h3>项目在做什么 · 规则分析</h3><p>${esc(a.summary)}</p>
+    <div class="tags">${a.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+    ${x.description?`<div class="desc">原文：${esc(x.description)}</div>`:''}</div>
+  <div>
+  <div class="grid">
+    <div class="cell"><span class="k">Dev 余额</span><span class="v ${cls(devBal)}">${devBal==null?(d.devErr?'读取失败':'…'):fmtN(devBal,1)}<small>NEAR</small></span></div>
+    <div class="cell"><span class="k">创建时自购</span><span class="v">${a.devBuy?fmtN(a.devBuy,1):'0'}<small>NEAR</small></span></div>
+    <div class="cell"><span class="k">推特 · KOL 关注</span><span class="v dim">${tweet?'有推特':'没填'}<small>KOL 数需 X 接口</small></span></div>
+    <div class="cell"><span class="k">交易税 · 买 / 卖</span><span class="v ${taxCls}">${taxTxt}</span></div>
+  </div>
+  <div class="grid">
+    <div class="cell"><span class="k">市值</span><span class="v">${fmtUsd(x.fdv_usd)}<small>最高 ${fmtUsd(x.ath_fdv_usd)}</small></span></div>
+    <div class="cell"><span class="k">持有人</span><span class="v">${x.holders??'–'}</span></div>
+    <div class="cell"><span class="k">24h 成交</span><span class="v">${fmtN(x.volume_24h_near||0,1)}<small>NEAR · ${x.trades_24h||0} 笔</small></span></div>
+    <div class="cell"><span class="k">池子</span><span class="v">${fmtUsd(a.liqUsd)}</span></div>
+  </div></div>
+  ${a.tax?`<div class="box"><h3>税收与兑现</h3><p>买卖各收 ${a.buyB/100}% / ${a.sellB/100}%；平台先拿 ${(a.tax.platform_bps||0)/100}%，其余按 创作者 ${(a.tax.creator_bps||0)/100}% · 持币人 ${(a.tax.holders_bps||0)/100}% · 销毁 ${(a.tax.burn_bps||0)/100}% 分。${paid}</p></div>`:''}
+  <div class="flags">${d.at?'':'<span class="loading">正在读取链上持仓、税率和 Dev 余额…</span>'}${a.flags.map(f=>`<div class="flag ${f[0]}"><b>${esc(f[1])}</b><span>${esc(f[2])}</span></div>`).join('')}</div>
+  <div class="facts"><span>Dev 持仓 <b>${a.devPct==null?'…':a.devPct.toFixed(2)+'%'}</b></span><span>前十大 <b>${a.top10==null?'…':a.top10.toFixed(1)+'%'}</b></span><span>Dev 此前发币 <b>${a.devPrior} 次</b></span></div>
+  <details><summary>评分怎么算的</summary><div class="breakdown">${br}<span><b>最终</b></span><span></span><span><b>${a.score??'–'}</b></span></div></details>
+  <div class="actions">
+    <a class="btn buy" href="https://nearly.trade/${esc(x.token)}" target="_blank" rel="noopener">去 Nearly 购买 ↗</a>
+    <a class="btn ${tweet?'':'off'}" href="${esc(tweet||'#')}" target="_blank" rel="noopener">推特 X ↗</a>
+    <a class="btn ${lk.website?'':'off'}" href="${esc(lk.website||'#')}" target="_blank" rel="noopener">官网 ↗</a>
+    <a class="btn ${lk.telegram?'':'off'}" href="${esc(lk.telegram||'#')}" target="_blank" rel="noopener">TG ↗</a>
+  </div>
+</article>`}
+function render(){
+  const open=new Set([...document.querySelectorAll('.card details[open]')].map(d=>d.closest('.card').dataset.id));
+  const all=list();const vis=all.slice(0,S.show);
+  $('s-hi').textContent=all.filter(o=>(o.a.score??0)>=7).length;
+  $('feed').innerHTML=vis.length?vis.map(card).join(''):'<div class="empty">当前筛选下没有币。</div>';
+  open.forEach(id=>{const d=document.querySelector(`.card[data-id="${id}"] details`);if(d)d.open=true});
+  $('more').hidden=all.length<=S.show;
+  vis.forEach(o=>{const d=S.detail.get(o.x.id);if(!d||(!d.loading&&Date.now()-(d.at||0)>90e3))queue(o.x)})}
+const Q=[];let running=0;
+function queue(x){if(Q.includes(x)||S.detail.get(x.id)?.loading)return;Q.push(x);pump()}
+function pump(){while(running<3&&Q.length){const x=Q.shift();running++;loadDetail(x).finally(()=>{running--;pump()})}}
+
+function notifyNew(xs){
+  document.title=`(${xs.length}) NEAR 新币雷达`;setTimeout(()=>document.title='NEAR 新币雷达',8000);
+  toast(`新币 ${xs.map(x=>'$'+x.symbol).join('、')}`);
+  if(S.sound){try{const ac=notifyNew.ac||(notifyNew.ac=new AudioContext());const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+.18)}catch(e){}}}
+
+// ---------- 交互 ----------
+$('sort-new').onclick=()=>{S.sort='new';syncCtl();render();savePrefs()};
+$('sort-score').onclick=()=>{S.sort='score';syncCtl();render();savePrefs()};
+$('f-hi').onchange=e=>{S.hi=e.target.checked;render();savePrefs()};
+$('f-dead').onchange=e=>{S.dead=e.target.checked;render();savePrefs()};
+$('f-sound').onchange=e=>{S.sound=e.target.checked};
+$('more').onclick=()=>{S.show+=20;render()};
+$('feed').addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;const t=b.dataset.copy;
+  (navigator.clipboard?.writeText(t)||Promise.reject()).then(()=>toast('合约已复制')).catch(()=>{const r=document.createRange();r.selectNodeContents(b);const s=getSelection();s.removeAllRanges();s.addRange(r);toast('已选中，按复制')})});
+function syncCtl(){$('sort-new').setAttribute('aria-pressed',S.sort==='new');$('sort-score').setAttribute('aria-pressed',S.sort==='score');$('f-hi').checked=S.hi;$('f-dead').checked=S.dead}
+function setStatus(ok,t){$('dot').classList.toggle('err',!ok);$('status').textContent=t}
+
+async function tickNew(){try{await loadNew();setStatus(true,'自动更新 · '+hm(Date.now()).slice(6));render()}catch(e){setStatus(false,'连不上 nearly.trade，15 秒后重试')}}
+async function tickFull(){try{await loadAll();render()}catch(e){}}
+async function refreshVisibleDetail(){list().slice(0,S.show).forEach(o=>{const d=S.detail.get(o.x.id);if(d&&!d.loading)d.at=0});render()}
+(async()=>{syncCtl();
+  try{await loadAll();setStatus(true,'自动更新 · '+hm(Date.now()).slice(6));render()}catch(e){setStatus(false,'读取失败，稍后自动重试')}
+  setInterval(tickNew,15e3);setInterval(tickFull,180e3);setInterval(refreshVisibleDetail,90e3)})();
+</script>
+</body>
+</html>
